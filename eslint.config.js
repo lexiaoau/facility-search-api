@@ -17,7 +17,6 @@ export default [
         ecmaVersion: 'latest',
         sourceType: 'module',
       },
-      // tell ESLint about Node.js globals
       globals: {
         ...globals.node,
       },
@@ -29,21 +28,22 @@ export default [
       ...tseslint.configs.recommended.rules,
       '@typescript-eslint/explicit-function-return-type': 'warn',
       '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        { argsIgnorePattern: '^_' },
-      ],
-      '@typescript-eslint/consistent-type-imports': [
-        'error',
-        { prefer: 'type-imports' },
-      ],
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/require-await': 'warn',
     },
   },
 
+  // Test files — add jest globals and relax rules
   {
     files: ['**/__tests__/**/*.ts', '**/*.test.ts'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        ...globals.jest, // adds describe, it, expect, beforeEach, afterEach, etc.
+      },
+    },
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/explicit-function-return-type': 'off',
