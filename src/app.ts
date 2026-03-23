@@ -17,7 +17,7 @@ app.use('/docs', docsRouter);
 
 const rateLimitMiddleware = createRateLimitMiddleware({
   limit: 100, // 100 requests
-  windowMs: 60_000, // per 1 minute, per user
+  windowMs: 60_000, // per 1 minute, per IP
 });
 
 app.use('/facilities', authMiddleware, rateLimitMiddleware, facilitiesRouter);
