@@ -121,7 +121,7 @@ components:
             type: string
           example: [Pool, Sauna, Gym]
         location:
-          \$ref: '#/components/schemas/FacilityLocation'
+          $ref: '#/components/schemas/FacilityLocation'
 
     ErrorDetail:
       type: object
@@ -139,7 +139,7 @@ components:
       required: [error]
       properties:
         error:
-          \$ref: '#/components/schemas/ErrorDetail'
+          $ref: '#/components/schemas/ErrorDetail'
 
   responses:
     Unauthorized:
@@ -147,7 +147,7 @@ components:
       content:
         application/json:
           schema:
-            \$ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ErrorResponse'
           example:
             error:
               code: UNAUTHORIZED
@@ -158,7 +158,7 @@ components:
       content:
         application/json:
           schema:
-            \$ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ErrorResponse'
           example:
             error:
               code: NOT_FOUND
@@ -169,7 +169,7 @@ components:
       content:
         application/json:
           schema:
-            \$ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ErrorResponse'
           example:
             error:
               code: VALIDATION_ERROR
@@ -185,7 +185,7 @@ components:
       content:
         application/json:
           schema:
-            \$ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ErrorResponse'
           example:
             error:
               code: RATE_LIMIT_EXCEEDED
@@ -252,8 +252,8 @@ paths:
           style: form
           explode: true
           example: Pool
-        - \$ref: '#/components/parameters/PageParam'
-        - \$ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
       responses:
         '200':
           description: Paginated search results
@@ -279,9 +279,9 @@ paths:
                   data:
                     type: array
                     items:
-                      \$ref: '#/components/schemas/FacilitySearchResult'
+                      $ref: '#/components/schemas/FacilitySearchResult'
                   meta:
-                    \$ref: '#/components/schemas/PaginationMeta'
+                    $ref: '#/components/schemas/PaginationMeta'
               example:
                 data:
                   - id: facility-001
@@ -296,11 +296,11 @@ paths:
                   total: 2
                   totalPages: 1
         '400':
-          \$ref: '#/components/responses/ValidationError'
+          $ref: '#/components/responses/ValidationError'
         '401':
-          \$ref: '#/components/responses/Unauthorized'
+          $ref: '#/components/responses/Unauthorized'
         '429':
-          \$ref: '#/components/responses/RateLimitExceeded'
+          $ref: '#/components/responses/RateLimitExceeded'
 
   /facilities/{id}:
     get:
@@ -335,7 +335,7 @@ paths:
           content:
             application/json:
               schema:
-                \$ref: '#/components/schemas/Facility'
+                $ref: '#/components/schemas/Facility'
               example:
                 id: facility-001
                 name: Sydney Fitness Centre
@@ -347,11 +347,11 @@ paths:
                   lat: -33.8688
                   lng: 151.2093
         '401':
-          \$ref: '#/components/responses/Unauthorized'
+          $ref: '#/components/responses/Unauthorized'
         '404':
-          \$ref: '#/components/responses/NotFound'
+          $ref: '#/components/responses/NotFound'
         '429':
-          \$ref: '#/components/responses/RateLimitExceeded'
+          $ref: '#/components/responses/RateLimitExceeded'
 `;
 
 // Serve the raw OpenAPI spec
