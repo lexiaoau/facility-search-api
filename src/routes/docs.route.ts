@@ -1,0 +1,391 @@
+import { Router } from 'express';
+
+const router = Router();
+
+const OPENAPI_SPEC = `openapi: 3.0.3
+
+info:
+  title: Facility Search API
+  version: 1.0.0
+  description: |
+    Search and retrieve sports/fitness facilities.
+
+    ## Authentication
+    All \`/facilities\` endpoints require a Bearer token in the \`Authorization\` header.
+    Obtain a token via the mock \`login()\` utility (see \`src/utils/auth.ts\`).
+
+    ## Rate Limiting
+    Requests are rate-limited **per client IP**: 100 requests per 60-second window.
+    Standard \`X-RateLimit-*\` headers are returned on every response.
+
+servers:
+  - url: http://localhost:3000
+    description: Local development
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      description: Page number (1-based)
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+
+    LimitParam:
+      name: limit
+      in: query
+      description: Results per page (max 100)
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+
+  schemas:
+    PaginationMeta:
+      type: object
+      required: [page, limit, total, totalPages]
+      properties:
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 10
+        total:
+          type: integer
+          example: 42
+        totalPages:
+          type: integer
+          example: 5
+
+    FacilityLocation:
+      type: object
+      required: [lat, lng]
+      properties:
+        lat:
+          type: number
+          format: float
+          example: -33.8688
+        lng:
+          type: number
+          format: float
+          example: 151.2093
+
+    FacilitySearchResult:
+      type: object
+      description: Lightweight facility summary returned in search results
+      required: [id, name, address]
+      properties:
+        id:
+          type: string
+          example: facility-001
+        name:
+          type: string
+          example: Sydney Fitness Centre
+        address:
+          type: string
+          example: 123 George St, Sydney NSW 2000
+
+    Facility:
+      type: object
+      description: Full facility detail
+      required: [id, name, address, city, state, facilities, location]
+      properties:
+        id:
+          type: string
+          example: facility-001
+        name:
+          type: string
+          example: Sydney Fitness Centre
+        address:
+          type: string
+          example: 123 George St, Sydney NSW 2000
+        city:
+          type: string
+          example: Sydney
+        state:
+          type: string
+          example: NSW
+        facilities:
+          type: array
+          items:
+            type: string
+          example: [Pool, Sauna, Gym]
+        location:
+          \$ref: '#/components/schemas/FacilityLocation'
+
+    ErrorDetail:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: VALIDATION_ERROR
+        message:
+          type: string
+          example: Query keyword is required
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          \$ref: '#/components/schemas/ErrorDetail'
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid Bearer token
+      content:
+        application/json:
+          schema:
+            \$ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: UNAUTHORIZED
+              message: No token provided
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            \$ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: NOT_FOUND
+              message: Facility not found
+
+    ValidationError:
+      description: Invalid query parameters
+      content:
+        application/json:
+          schema:
+            \$ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: Query keyword is required
+
+    RateLimitExceeded:
+      description: Too many requests
+      headers:
+        Retry-After:
+          description: Seconds until the rate limit window resets
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            \$ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: RATE_LIMIT_EXCEEDED
+              message: Rate limit exceeded. Try again in 42 second(s).
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Returns service status. No authentication required.
+      operationId: healthCheck
+      security: []
+      tags: [System]
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, timestamp]
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: '2026-03-23T04:00:00.000Z'
+
+  /facilities:
+    get:
+      summary: Search facilities
+      description: |
+        Full-text search across facility names using an n-gram index.
+        Results are paginated and contain only \`id\`, \`name\`, and \`address\`.
+        Use \`GET /facilities/{id}\` to retrieve full details.
+      operationId: searchFacilities
+      tags: [Facilities]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search keyword (must be non-empty)
+          schema:
+            type: string
+            minLength: 1
+          example: fitness
+        - name: amenities
+          in: query
+          description: |
+            Filter by amenity. Supports:
+            - repeated params: \`?amenities=Pool&amenities=Sauna\`
+            - comma-separated: \`?amenities=Pool,Sauna\`
+          schema:
+            oneOf:
+              - type: string
+              - type: array
+                items:
+                  type: string
+          style: form
+          explode: true
+          example: Pool
+        - \$ref: '#/components/parameters/PageParam'
+        - \$ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated search results
+          headers:
+            X-RateLimit-Limit:
+              description: Max requests per window
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in current window
+              schema:
+                type: integer
+            X-RateLimit-Reset:
+              description: UTC epoch (seconds) when window resets
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      \$ref: '#/components/schemas/FacilitySearchResult'
+                  meta:
+                    \$ref: '#/components/schemas/PaginationMeta'
+              example:
+                data:
+                  - id: facility-001
+                    name: Sydney Fitness Centre
+                    address: 123 George St, Sydney NSW 2000
+                  - id: facility-002
+                    name: Melbourne Fitness Hub
+                    address: 456 Collins St, Melbourne VIC 3000
+                meta:
+                  page: 1
+                  limit: 10
+                  total: 2
+                  totalPages: 1
+        '400':
+          \$ref: '#/components/responses/ValidationError'
+        '401':
+          \$ref: '#/components/responses/Unauthorized'
+        '429':
+          \$ref: '#/components/responses/RateLimitExceeded'
+
+  /facilities/{id}:
+    get:
+      summary: Get facility by ID
+      description: Returns full facility details including location and amenities list.
+      operationId: getFacilityById
+      tags: [Facilities]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Facility ID
+          schema:
+            type: string
+          example: facility-001
+      responses:
+        '200':
+          description: Full facility detail
+          headers:
+            X-RateLimit-Limit:
+              description: Max requests per window
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in current window
+              schema:
+                type: integer
+            X-RateLimit-Reset:
+              description: UTC epoch (seconds) when window resets
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                \$ref: '#/components/schemas/Facility'
+              example:
+                id: facility-001
+                name: Sydney Fitness Centre
+                address: 123 George St, Sydney NSW 2000
+                city: Sydney
+                state: NSW
+                facilities: [Pool, Sauna, Gym, Cardio Room]
+                location:
+                  lat: -33.8688
+                  lng: 151.2093
+        '401':
+          \$ref: '#/components/responses/Unauthorized'
+        '404':
+          \$ref: '#/components/responses/NotFound'
+        '429':
+          \$ref: '#/components/responses/RateLimitExceeded'
+`;
+
+// Serve the raw OpenAPI spec
+router.get('/openapi.yaml', (_req, res) => {
+  res.setHeader('Content-Type', 'text/yaml; charset=utf-8');
+  res.send(OPENAPI_SPEC);
+});
+
+// Serve Swagger UI via CDN — no npm package required
+router.get('/', (_req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Facility Search API — Docs</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script>
+    SwaggerUIBundle({
+      url: '/docs/openapi.yaml',
+      dom_id: '#swagger-ui',
+      presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.SwaggerUIStandalonePreset],
+      layout: 'BaseLayout',
+      deepLinking: true,
+      tryItOutEnabled: true,
+    });
+  </script>
+</body>
+</html>`);
+});
+
+export default router;

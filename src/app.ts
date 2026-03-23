@@ -1,5 +1,6 @@
 import express from 'express';
 import facilitiesRouter from './routes/facilities.route.js';
+import docsRouter from './routes/docs.route.js';
 import { errorMiddleware } from './middleware/error.middleware.js';
 import { authMiddleware } from './middleware/auth.middleware.js';
 import { createRateLimitMiddleware } from './middleware/rateLimit.middleware.js';
@@ -10,6 +11,9 @@ app.use(express.json());
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// API docs — no auth required
+app.use('/docs', docsRouter);
 
 const rateLimitMiddleware = createRateLimitMiddleware({
   limit: 100, // 100 requests
