@@ -94,9 +94,7 @@ export async function verifyToken(token: string): Promise<User> {
     if (!payloadPart) {
       throw new Error('Invalid token format');
     }
-    const payload = JSON.parse(
-      Buffer.from(payloadPart, 'base64').toString('utf-8'),
-    );
+    const payload = JSON.parse(Buffer.from(payloadPart, 'base64').toString('utf-8'));
     return payload.user;
   } catch {
     throw new Error('Invalid token');
@@ -116,12 +114,10 @@ export function logout(): void {
  * Note: This is NOT cryptographically secure - for testing only!
  */
 function generateMockToken(user: User): string {
-  const header = Buffer.from(
-    JSON.stringify({ alg: 'HS256', typ: 'JWT' }),
-  ).toString('base64');
-  const payload = Buffer.from(
-    JSON.stringify({ user, exp: Date.now() + 3600000 }),
-  ).toString('base64');
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64');
+  const payload = Buffer.from(JSON.stringify({ user, exp: Date.now() + 3600000 })).toString(
+    'base64',
+  );
   const signature = 'mock-signature';
   return `${header}.${payload}.${signature}`;
 }
